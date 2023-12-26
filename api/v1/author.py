@@ -16,17 +16,19 @@ class ProjectApi(api_tools.APIModeHandler):
             user['personal_project_id'] = personal_project_id
         except Empty:
             ...
-        try:
-            auth_ctx = auth.get_referenced_auth_context(g.auth.reference)
-            avatar = auth_ctx['provider_attr']['attributes']['picture']
-        except (AttributeError, KeyError):
-            avatar = None
-        user['avatar'] = avatar
 
-        social_user: User = User.query.get(user['id'])
-        user['description'] = social_user.description
-        user['avatar'] = social_user.avatar
-        user['title'] = social_user.title
+        social_user: User = User.query.filter(User.user_id == user['id']).first()
+        if social_user:
+            user['description'] = social_user.description
+            user['avatar'] = social_user.avatar
+            user['title'] = social_user.title
+        else:
+            try:
+                auth_ctx = auth.get_referenced_auth_context(g.auth.reference)
+                avatar = auth_ctx['provider_attr']['attributes']['picture']
+            except (AttributeError, KeyError):
+                avatar = None
+            user['avatar'] = avatar
 
         if user.get('personal_project_id'):
             config_data = self.module.context.rpc_manager.timeout(2).prompts_get_config(
