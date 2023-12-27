@@ -31,24 +31,11 @@ class ProjectApi(api_tools.APIModeHandler):
             user['avatar'] = avatar
 
         if user.get('personal_project_id'):
-            config_data = self.module.context.rpc_manager.timeout(2).prompts_get_config(
-                project_id=user['personal_project_id'],
-                user_id=user['id']
-            )
-            config_data = config_data.dict()
-            user['integrations'] = config_data['integrations']
-            user['api_url'] = config_data['url']
-
-        user['tokens'] = []
-        user_tokens = auth.list_tokens(user['id'])
-        for t in user_tokens:
-            tkn = auth.encode_token(t['id'])
-            user['tokens'].append({
-                'value': tkn,
-                'expires': t['expires'],
-                'name': t['name'],
-                'id': t['id']
-            })
+            secrets = VaultClient(user['personal_project_id']).get_all_secrets()
+            user['api_url'] = ''.join([
+                secrets['galloper_url'],
+                secrets.get('ai_project_api_url', '/api/v1')
+            ])
 
         return jsonify(user)
 
