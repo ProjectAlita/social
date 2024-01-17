@@ -14,4 +14,3 @@ class FeedbackUpdateModel(BaseModel):
     user_id: Optional[int]
     page: Optional[str]
     description: Optional[str]
-
