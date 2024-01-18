@@ -62,4 +62,4 @@ class API(api_tools.APIBase):
         ]
     )
 
-    mode_handlers = {"default": ProjectApi}
+    mode_handlers = {c.DEFAULT_MODE: ProjectApi}

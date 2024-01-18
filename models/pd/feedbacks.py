@@ -5,12 +5,13 @@ from pydantic import BaseModel, conint
 class FeedbackModel(BaseModel):
     rating: conint(ge=0, le=5)
     user_id: int
-    page: str
-    description: Optional[str]
+    referrer: Optional[str]
+    description: str
+    user_agent: Optional[str]
 
 
 class FeedbackUpdateModel(BaseModel):
     rating: Optional[conint(ge=0, le=5)]
     user_id: Optional[int]
-    page: Optional[str]
+    referrer: Optional[str]
     description: Optional[str]

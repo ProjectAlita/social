@@ -1,9 +1,10 @@
 from flask import request
-from tools import api_tools, config as c, auth
+from tools import api_tools, config as c, auth, db
 from pydantic import ValidationError
+from ...models.feedbacks import Feedback
 from ...models.pd.feedbacks import FeedbackModel
 
-# from pylon.core.tools import log
+from pylon.core.tools import log
 
 
 
@@ -14,35 +15,13 @@ class ProjectAPI(api_tools.APIModeHandler):
             c.ADMINISTRATION_MODE: {"admin": True, "editor": True, "viewer": False},
             c.DEFAULT_MODE: {"admin": True, "editor": True, "viewer": False},
         }})
-    @api_tools.endpoint_metrics
     def get(self, project_id: int | None = None, **kwargs):
         args = dict(request.args)    
         result = self.module.list_feedbacks(args)
         return result['result'], 200
 
 
-    @auth.decorators.check_api({
-        "permissions": ["models.prompt_lib.feedbacks.create"],
-        "recommended_roles": {
-            c.ADMINISTRATION_MODE: {"admin": True, "editor": True, "viewer": False},
-            c.DEFAULT_MODE: {"admin": True, "editor": True, "viewer": False},
-        }})
-    @api_tools.endpoint_metrics
-    def post(self, project_id: int | None = None, **kwargs):
-        data = request.get_json()
-        author_id = auth.current_user().get("id")
-        data["user_id"] = author_id        
-        try:
-            FeedbackModel.validate(data)
-        except ValidationError as e:
-            return {"ok":False, "errors": e.errors()}, 400
-        
-        result = self.module.feedback_create(data)
-        if not result["ok"]:
-            return result, 400
-        
-        result['result'] = result['result'].to_json()
-        return result, 201
+
         
 
 class API(api_tools.APIBase):
@@ -56,3 +35,28 @@ class API(api_tools.APIBase):
     mode_handlers = {
         c.DEFAULT_MODE: ProjectAPI,
     }
+
+    @auth.decorators.check_api({
+        "permissions": ["models.prompt_lib.feedbacks.create"],
+        "recommended_roles": {
+            c.ADMINISTRATION_MODE: {"admin": True, "editor": True, "viewer": True},
+            c.DEFAULT_MODE: {"admin": True, "editor": True, "viewer": True},
+        }})
+    def post(self, project_id: int | None = None, **kwargs):
+        data = request.get_json()
+        author_id = auth.current_user().get("id")
+        data['user_id'] = author_id
+        data['user_agent'] = str(request.user_agent)
+        if request.referrer:
+            data['referrer'] = str(request.referrer)
+
+        try:
+            data_model = FeedbackModel.parse_obj(data)
+        except ValidationError as e:
+            return {"ok": False, "errors": e.errors()}, 400
+
+        with db.with_project_schema_session(None) as session:
+            feedback = Feedback(**data_model.dict())
+            session.add(feedback)
+            session.commit()
+            return {'id': feedback.id}, 201
