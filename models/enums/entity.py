@@ -9,3 +9,4 @@ except ImportError:
 class EntityType(StrEnum):
     prompt = 'prompt'
     collection = 'collection'
+    datasource = 'datasource'
