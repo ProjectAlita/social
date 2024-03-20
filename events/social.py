@@ -36,8 +36,9 @@ class Event:
         user = User.query.filter_by(user_id=user_id).first()
         if user:
             user.avatar = avatar
+            user.commit()
         else:
             user = User(**user_data.dict())
-        user.insert()
+            user.insert()
 
         return user.to_json()
